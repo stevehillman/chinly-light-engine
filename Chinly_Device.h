@@ -1,6 +1,6 @@
 #ifndef CHINLYDEVICE
 #define CHINLYDEVICE
-#include "BLEDevice.h"
+#include "myBLE/myBLEDevice.h"
 
 /*
  * Theory of Operation: We'll use a Light class to represent a single instance of a
@@ -71,24 +71,17 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
        uint8_t      mode; // 0 = use 'function', 1 = 'on', 4 = 'sound activated'
        uint8_t  function;
        uint8_t    fspeed; // speed that function runs or transitions at
-       union {
-        struct {
-          uint8_t       red;
-          uint8_t     green;
-          uint8_t      blue;
-          uint8_t    filler;
-        };
-        struct {
-          uint32_t    color;
-        };
-       };
+       uint8_t       red;
+       uint8_t     green;
+       uint8_t      blue;
+       uint8_t     white;
        uint8_t brightness; // 0x01 - 0x64 (1-100)
        uint8_t musicmode_h; // For music mode, 0xff. 0x00 otherwise
        uint8_t musicmode_l; // for music mode, 0x13. 0x00 otherwise. unknown what other values do
        uint8_t mic_sense; // 0x01-0x09 microphone sensitivity 
        uint8_t   twinkle; // twinkle off/on (0x00, 0xff)
        uint8_t   t_speed; // twinkle speed 0x01-0x04
-       uint8_t footer [5] =  { 0xff,0,5,0,0xaa }; // trailing bytes. Always 0xff000500aa
+       uint8_t footer [5]; // trailing bytes. Always 0xff000500aa
      } chardata;
 
      void init() {
@@ -100,19 +93,27 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
        chardata.red = 0xff;
        chardata.green = 0xff;
        chardata.blue = 0xff;
-       chardata.filler = 0x00;
+       chardata.white = 0xff;
        chardata.brightness = 0x64;
        chardata.musicmode_h = 0;
        chardata.musicmode_l = 0;
        chardata.mic_sense = 0x09;
        chardata.twinkle = 0;
        chardata.t_speed = 0x01;
+       // Ugh, there has to be a better way to do this. Initialize trailing bytes. Always 0xff000500aa
+       chardata.footer[0] = 0xff;
+       chardata.footer[1] = 0;
+       chardata.footer[2] = 5;
+       chardata.footer[3] = 0;
+       chardata.footer[4] = 0xaa;
      }
 
      void write_device_() {
        if (connected() && myRemoteCharacteristic != nullptr) {
-        uint8_t* bytes = (uint8_t *)&chardata;
+         uint8_t* bytes = (uint8_t *)&chardata;
          myRemoteCharacteristic->writeValue(bytes, sizeof(chardata), false);
+         ESP_LOGD("ChinlyDevice","Writing data: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", chardata.header, chardata.power, chardata.mode, chardata.function,
+            chardata.fspeed,chardata.red,chardata.green,chardata.blue,chardata.white,chardata.brightness);
        }
      }
 
@@ -154,10 +155,15 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
      // 3 steps to connecting: connect to device, get service, get remote characteristic handle
      myClient = BLEDevice::createClient();
      myClient->setClientCallbacks(connectionState);
-     myClient->connect(myDevice);
+     if (!myClient->connect(myDevice)) {
+       ESP_LOGE("ChinlyDevice","Failed to connect to device");
+       return false;
+     }
      
      myRemoteService = myClient->getService(serviceUUID);
      if (myRemoteService == nullptr) {
+      ESP_LOGD("ChinlyDevice","Device is missing required service UUID. Disconnecting");
+
        myClient->disconnect();
        return false;
      }
@@ -165,10 +171,19 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
      // Obtain a reference to the characteristic in the service of the remote BLE server.
      myRemoteCharacteristic = myRemoteService->getCharacteristic(charUUID);
      if (myRemoteCharacteristic == nullptr) {
+       ESP_LOGD("ChinlyDevice","Device is missing required Characteristic UUID. Disconnecting");
        myClient->disconnect();
        return false;
      }
+     ESP_LOGD("ChinlyDevice","Connected!");
      return true;
+   }
+
+   void disconnect() {
+     if (!connected() || myDevice == nullptr) {
+       return;
+     }
+     myClient->disconnect();
    }
 
     /* Set power state
@@ -189,14 +204,17 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
       return (chardata.power == 0xff);
     }
 
-    // getColor - returns color as an 0xRRGGBBWW hex value. WW is always 00
+    // getColor - returns color as an 0xRRGGBBWW hex value.
     uint32_t getColor() {
-      return (chardata.color);
+      return (chardata.red<<24 | chardata.green<<16 | chardata.blue<<8 | chardata.white);
     }
 
-    // Set color. Input is in the 0xRRGGBBWW. White is ignored.
+    // Set color. Input is in the form 0xRRGGBBWW.
     void setColor(uint32_t color) {
-      chardata.color = color;
+      chardata.red = static_cast<uint8_t>(color>>24 & 0xff);
+      chardata.green = static_cast<uint8_t>(color>>16 & 0xff);
+      chardata.blue = static_cast<uint8_t>(color>>8 & 0xff);
+      chardata.white = static_cast<uint8_t>(color & 0xff);
       write_device_();
     }
 
@@ -211,6 +229,24 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
         brightness = 0x64;
       }
       chardata.brightness = brightness;
+      write_device_();
+    }
+
+    void setBrightnessAndColorAndState(uint8_t brightness, uint32_t color, bool state) {
+      if (brightness > 0x64) {
+        brightness = 0x64;
+      }
+      chardata.brightness = brightness;
+      chardata.red = static_cast<uint8_t>(color>>24 & 0xff);
+      chardata.green = static_cast<uint8_t>(color>>16 & 0xff);
+      chardata.blue = static_cast<uint8_t>(color>>8 & 0xff); 
+      chardata.white = static_cast<uint8_t>(color & 0xff);
+      if (state) {
+        chardata.power = 0xff;
+      }
+      else {
+        chardata.power = 0x00;
+      }
       write_device_();
     }
 
@@ -248,6 +284,21 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
       }
       else {
         chardata.mode = 0x01;
+      }
+      write_device_();
+    }
+
+    void setFunction(uint8_t function, uint8_t fspeed) {
+      if (function == 0) {
+        chardata.mode = 0x01;
+      } else {
+        chardata.mode = 0;
+        chardata.white = 0xff;
+        if (fspeed > 10) {
+          fspeed = 10;
+        }
+        chardata.function = function;
+        chardata.fspeed = fspeed;
       }
       write_device_();
     }

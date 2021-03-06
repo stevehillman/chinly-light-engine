@@ -5,9 +5,9 @@
 
   ChinlyLightDevice* lightDevice;
   static BLEAdvertisedDevice* foundDevice;
-  static boolean doConnect = false;
-  static boolean connected = false;
-  static boolean doScan = false;
+  static bool doConnect = false;
+  static bool connected = false;
+  static bool doScan = false;
 
   /**
    * Scan for BLE servers and find the first one that advertises the service we are looking for.
