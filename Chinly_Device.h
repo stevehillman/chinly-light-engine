@@ -112,8 +112,8 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
        if (connected() && myRemoteCharacteristic != nullptr) {
          uint8_t* bytes = (uint8_t *)&chardata;
          myRemoteCharacteristic->writeValue(bytes, sizeof(chardata), false);
-         ESP_LOGD("ChinlyDevice","Writing data: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", chardata.header, chardata.power, chardata.mode, chardata.function,
-            chardata.fspeed,chardata.red,chardata.green,chardata.blue,chardata.white,chardata.brightness);
+         ESP_LOGD("ChinlyDevice","Writing data: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", chardata.header, chardata.power, chardata.mode, chardata.function,
+            chardata.fspeed,chardata.red,chardata.green,chardata.blue,chardata.white,chardata.brightness,chardata.musicmode_h,chardata.musicmode_l,chardata.mic_sense,chardata.twinkle,chardata.t_speed);
        }
      }
 
@@ -297,7 +297,7 @@ static BLEUUID charUUID("0000ffb1-0000-1000-8000-00805f9b34fb");
         if (fspeed > 10) {
           fspeed = 10;
         }
-        chardata.function = function;
+        chardata.function = function - 1;
         chardata.fspeed = fspeed;
       }
       write_device_();

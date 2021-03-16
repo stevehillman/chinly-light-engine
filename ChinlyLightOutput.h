@@ -35,6 +35,8 @@ class ChinlyLightOutput : public Component, public LightOutput {
  private:
   ChinlyLightDevice* myChinlyLightDevice;
   LightState* light_state;
+  // currently active light effect, if any
+  int light_effect;
 
  public:
 
@@ -73,6 +75,10 @@ class ChinlyLightOutput : public Component, public LightOutput {
 
     // If state is "OFF"
     if (!power && (brightness == 0.0f || brightness == 1.0f)) {
+      // Reset all effects first
+      myChinlyLightDevice->setFunction(0,1);
+      myChinlyLightDevice->setMusicMode(0);
+      myChinlyLightDevice->setTwinkleSpeed(0);
       myChinlyLightDevice->setState(false);
     }
     else {
@@ -90,16 +96,27 @@ class ChinlyLightOutput : public Component, public LightOutput {
   // These last methods expose the underlying effects of the Light Engine. Use them
   // in custom Lambda code in ESPHome to add custom effects. It's the only way to support
   // twinkle, music, etc, without writing custom ESPHome code
-  void set_twinkle(int mode) {
+  void set_twinkle(int effect, int mode) {
+    if (light_effect == effect) return;
+    light_effect = effect;
+    ESP_LOGD("ChinlyOutput","set_twinkle called with mode %d",mode);
     myChinlyLightDevice->setTwinkleSpeed(static_cast<uint8_t>(mode));
   }
 
-  void set_music_mode(int mode) {
+  void set_music_mode(int effect, int mode) {
+    if (light_effect == effect) return;
+    light_effect = effect;
+    // Turn off other effects first
+    myChinlyLightDevice->setFunction(0,1);
     myChinlyLightDevice->setMusicMode(static_cast<uint8_t>(mode));
   }
 
-  void set_effect(int effect, int speed) {
-    myChinlyLightDevice->setFunction(static_cast<uint8_t>(effect), static_cast<uint8_t>(speed));
+  void set_effect(int effect, int func, int speed) {
+    if (light_effect == effect) return;
+    light_effect = effect;
+    // turn off music first
+    myChinlyLightDevice->setMusicMode(0);
+    myChinlyLightDevice->setFunction(static_cast<uint8_t>(func), static_cast<uint8_t>(speed));
   }
 };
 

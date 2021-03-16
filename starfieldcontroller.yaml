@@ -1,0 +1,171 @@
+esphome:
+  name: theatrecontroller
+  platform: ESP32
+  board: heltec_wifi_kit_32
+  includes:
+    - ChinlyLightOutput.h
+    - Chinly_Device.h
+    - myBLE
+    
+debug:
+
+wifi:
+  ssid: !secret esphome_ssid
+  password: !secret urit_wifi_password
+  manual_ip:
+    static_ip: 10.0.20.24
+    gateway: 10.0.20.1
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Theatrecontroller"
+    password: !secret captive_wifi_password
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: verbose
+
+# Enable Home Assistant API
+api:
+  password: !secret esphome_mgmt
+
+ota:
+  password: !secret esphome_mgmt
+
+light:
+- platform: custom
+  lambda: |-
+    auto my_component = new ChinlyComponent(2);
+    App.register_component(my_component);
+    return {my_component->getLightOutput(0), my_component->getLightOutput(1)};
+
+  lights:
+  - name: "Starfield Constellations"
+    id: starfield_const
+    effects:
+      - lambda:
+          name: No effect
+          update_interval: 1s
+          lambda: |-
+            int effect = 0;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_effect(effect, 0,5);
+      - random:
+          name: slow colour change
+          transition_length: 5s
+          update_interval: 7s
+      - lambda:
+          name: No twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 1;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_twinkle(effect, 0);
+      - lambda:
+          name: Slow twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 2;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_twinkle(effect, 1);
+      - lambda:
+          name: Fast twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 3;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_twinkle(effect, 4);
+      - lambda:
+          name: Music mode low sens
+          update_interval: 1s
+          lambda: |-
+            int effect = 4;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_music_mode(effect, 3);
+      - lambda:
+          name: Music mode high sens
+          update_interval: 1s
+          lambda: |-
+            int effect = 5;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_music_mode(effect, 9);
+      - lambda:
+          name: 7-colour fade
+          update_interval: 1s
+          lambda: |-
+            int effect = 6;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_effect(effect, 1,5);
+      - lambda:
+          name: 7-colour breathe
+          update_interval: 1s
+          lambda: |-
+            int effect = 7;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_const)->get_output();
+            clo->set_effect(effect, 3,5);
+  - name: "Starfield Background"
+    id: starfield_back
+    effects:
+      - lambda:
+          name: No effect
+          update_interval: 1s
+          lambda: |-
+            int effect = 0;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_effect(effect, 0,5);
+      - random:
+          name: slow colour change
+          transition_length: 5s
+          update_interval: 7s
+      - lambda:
+          name: No twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 1;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_twinkle(effect, 0);
+      - lambda:
+          name: Slow twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 2;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_twinkle(effect, 1);
+      - lambda:
+          name: Fast twinkle
+          update_interval: 1s
+          lambda: |-
+            int effect = 3;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_twinkle(effect, 4);
+      - lambda:
+          name: Music mode low sens
+          update_interval: 1s
+          lambda: |-
+            int effect = 4;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_music_mode(effect, 3);
+      - lambda:
+          name: Music mode high sens
+          update_interval: 1s
+          lambda: |-
+            int effect = 5;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_music_mode(effect, 9);
+      - lambda:
+          name: 7-colour fade
+          update_interval: 1s
+          lambda: |-
+            int effect = 6;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_effect(effect, 1,5);
+      - lambda:
+          name: 7-colour breathe
+          update_interval: 1s
+          lambda: |-
+            int effect = 7;
+            ChinlyLightOutput* clo = (ChinlyLightOutput*)id(starfield_back)->get_output();
+            clo->set_effect(effect, 3,5);
